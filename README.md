@@ -104,7 +104,10 @@ Thanks to ML4Astro community, Lenstronomy, and SciPy developers.
 
 ## Appendix
 **Code:** [AstroRim GitHub](https://github.com/Mad-At-Line/AstroRim)
-**Sample Images** ![Figure 1](image_dump/Screenshot_2025-04-29_220437.png) ![Figure 2](image_dump/image_2025-08-13_151914547.png) ![Figure 3](image_dump/image_2025-08-13_152045645.png)
+
+
+
+**Sample Images** Figure 1: Simulation example ![Figure 1](image_dump/Screenshot_2025-04-29_220437.png) Figure 2: Recontruction of a lensed image compared the ground truth ![Figure 2](image_dump/image_2025-08-13_151914547.png) Figure 3: Recontruction of a lensed image compared the ground truth ![Figure 3](image_dump/image_2025-08-13_152045645.png)
 ---
 
 ## References
