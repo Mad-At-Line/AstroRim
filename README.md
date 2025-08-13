@@ -104,7 +104,7 @@ Thanks to ML4Astro community, Lenstronomy, and SciPy developers.
 
 ## Appendix
 **Code:** [AstroRim GitHub](https://github.com/Mad-At-Line/AstroRim)
-
+**Sample Images** ![Figure 1](Screenshot 2025-04-29 220437.png) ![Figure 2](image_2025-08-13_151914547.png) ![Figure 3](image_2025-08-13_152045645.png)
 ---
 
 ## References
