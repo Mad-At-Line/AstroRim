@@ -77,7 +77,6 @@ Morningstar used fixed forward models; AstroRim co-trains the physics operator f
 - Joint training accelerates convergence but can oscillate—mitigated with AMP, EMA, gradient clipping.
 
 ### 5.3 Limitations & Future Improvements
-- No PSF/noise modeling yet.
 - Synthetic-to-real gap remains.
 - Plans: add PSF/noise, scale to higher resolutions, real HST/JWST validation.
 
