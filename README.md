@@ -9,15 +9,14 @@ Greystones Community College
 
 ## Abstract
 
-Gravitational lensing can be viewed as a powerful natural telescope to observe distant galaxies, but inverting lensing distortions remains a complicated previously unsolved inverse problem. We present **AstroRim**, a Recurrent Inference Machine (RIM) jointly trained with a differentiable forward lensing operator, to reconstruct unlensed source plane images from simulated strong lens observations. Using a 120,000+ sample synthetic dataset with complex multi-component lens models (SIE + NFW + SIS + External Shear) and extended Sérsic sources at 64×64 resolution, AstroRim achieves a Structural Similarity Index (SSIM) of **0.95 ± 0.02** and Mean Squared Error (MSE) of **4.7×10⁻⁴** on unseen test data. We demonstrate stability improvements via mixed precision, gradient clipping, and EMA, and discuss pathways towards real data application on HST, JWST, and Euclid imagery.
+Gravitational lensing can be viewed as a powerful natural telescope to observe distant galaxies, but inverting lensing distortions remains a complicated previously unsolved inverse problem. We present AstroRim, a Recurrent Inference Machine (RIM) jointly trained with a differentiable forward lensing operator, to reconstruct unlensed source plane images from simulated strong lens observations. Using a 120,000+ sample synthetic dataset with complex multi component lens models Single Isothermal Ellipsoid (SIE) + Navarro–Frenk–White (NFW) + Single Isothermal Sphere (SIS) + External Shear and extended Sersic sources at 64×64 resolution, AstroRim achieves a Structural Similarity Index (SSIM) of 0.95 ± 0.02 and Mean Squared Error (MSE) of 4.7×10⁻⁴ on unseen test data. We demonstrate stability improvements via mixed precision, gradient clipping, and Exponential Moving Average (EMA), and discuss pathways towards real data application on HST, JWST, and Euclid imagery. Our pipeline offers a scalable, physics informed approach to delensing.
 
 ---
 
 ## 1. Introduction
 
-Gravitational lensing by massive foreground objects distorts and magnifies background sources, enabling high-resolution studies of distant galaxies. However, inverting these distortions is challenging: multiple source configurations can produce identical lensed images. Traditional parametric inversion methods are computationally expensive, sensitive to model assumptions, and lack generalization.
-
-Recent advances in deep learning, particularly RIMs and Physics Informed Neural Networks (PINNs), offer data-driven inversion by iteratively refining source estimates through learned gradient steps. Most prior work uses fixed forward operators or pretrained physics models, which can overfit. We propose **AstroRim**, which **jointly trains** the RIM and a differentiable CNN-based lensing operator end-to-end.
+Gravitational lensing by massive foreground objects distorts and magnifies background sources, enabling high resolution studies of distant galaxies. However, inverting these distortions to recover source morphology is greatly challenging: multiple source configurations can produce identical lensed images. Traditional parametric inversion methods are computationally expensive and sensitive to model assumptions, as well as a severe lack of generalization.
+Recent advances in deep learning, particularly Recurrent Inference Machines (RIMs) and Physics Informed Neural Networks (PINNs), offer mass simulation based data driven inversion by iteratively refining source estimates through learned gradient steps. Yet, most prior work uses a fixed forward operator or pretrained physics models that are subject to overfitting and poorly adapted to data provided outside their simulation scripts. We propose AstroRim, which jointly trains the RIM and a differentiable CNN based lensing operator end to end, leveraging physical constraints while maintaining dataset flexibility To our knowledge, this is the first delensing pipeline to jointly train a RIM and learned Convolutional Neural Network (CNN) based lensing operator end-to-end.
 
 ---
 
@@ -69,7 +68,7 @@ Recent advances in deep learning, particularly RIMs and Physics Informed Neural 
 ## 5. Discussion
 
 ### 5.1 Comparison to Morningstar et al. (2019)
-Morningstar used fixed forward models; AstroRim co-trains the physics operator for better adaptability and generalization.
+Morningstar et al. (2019) demonstrated the application of a RIM for gravitational lens inversion using a fixed, parametric forward model (ray tracing through an SIE lens) paired with a separate CNN for mass estimation (Morningstar et al., 2019). However, their approach does not cotrain the physics operator, limiting adaptability to modeling errors, and leading to inevitable failure in the context of real data. In contrast, AstroRim jointly optimizes a differentiable CNN based lensing operator and the RIM, enabling end to end correction of forward model mismatches and yielding higher fidelity reconstructions. Another angle is that of generalization. Morningstar et al. (2019) was able to produce high quality reconstructions, however these reconstructions were all using the same lens types and not accounting for variance in object location and size, as well as providing the model with data outside of the pure lensed information during evaluation.
 
 ### 5.2 Stability vs. Capacity
 - 96-dim RIM = higher SSIM, near hardware limits.
@@ -83,7 +82,6 @@ Morningstar used fixed forward models; AstroRim co-trains the physics operator f
 ---
 
 ## 6. Future Work
-- Add realistic PSF convolution and noise injection.
 - Scale to 128×128 and multi-band images.
 - Validate on real HST/JWST datasets.
 - Add uncertainty estimation and RGB channels.
