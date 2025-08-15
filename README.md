@@ -43,8 +43,8 @@ Recent advances in deep learning, particularly Recurrent Inference Machines (RIM
 ### 3.1 Simulation Pipeline
 - Lens models: SIE + NFW + SIS + Shear via Lenstronomy.
 - Sources: 1–3 Sérsic profiles with varied amplitude, size, ellipticity, and position.
-- Grid: 64×64 pixels, normalized coordinates [-1,1].
-- Dataset: 20k pairs (16k train, 4k val), noise-free; 250-pair test set.
+- Grid: 96x96 pixels, normalized coordinates [-1,1] (to 98%).
+- Dataset: 45k+ pairs (85% train, 15% val) 250-pair test set.
 
 ### 3.2 Model Architecture
 - Forward Operator: CNN (Conv 9×9 → ReLU → Conv 5×5 → ReLU → Conv 3×3).
