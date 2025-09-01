@@ -1,13 +1,4 @@
-#!/usr/bin/env python3
-"""
-rim_infer_from_training.py
 
-Inference / testing script compatible with models produced by the training script you posted.
-
-Edit the USER CONFIG block below to point to input files/folders and model weights.
-Run:
-    python rim_infer_from_training.py
-"""
 
 import os
 import glob
@@ -20,9 +11,7 @@ import torch.nn.functional as F
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 
-# ----------------------------
-# === USER CONFIG (edit me) ===
-# Either set INPUT_FILE (single .fits) OR INPUT_DIR (directory with .fits).
+
 INPUT_FILE = None
 INPUT_DIR = r"C:\Users\mythi\.astropy\Code\Fits_work\unseen_lv5"
 
@@ -30,18 +19,12 @@ OUT_DIR = r"C:\Users\mythi\.astropy\Code\sim_results_lv5"
 MODEL_PATH = r"C:\Users\mythi\.astropy\Code\Fits_work\Rim_improved_models\rim_finetune_best3.pt"
 FORWARD_PATH = r"C:\Users\mythi\.astropy\Code\Fits_work\Rim_improved_models\forward_finetune_best3.pt"
 
-# Inference params
-N_ITER = 8           # If different from training this only changes inference iterations
+
+N_ITER = 8           
 RESCALE_OUTPUT = True
 SAVE_PNG = True
-DEVICE = None        # "cpu" / "cuda" or None to auto-detect
-# ----------------------------
-# End USER CONFIG
-# ----------------------------
+DEVICE = None      
 
-# ----------------------------
-# Model / forward operator defs (copied from the training script)
-# ----------------------------
 class PhysicalForward(nn.Module):
     """Composite forward operator:
     y = D( PSF( Warp(source; lens_params) ) )
@@ -57,21 +40,19 @@ class PhysicalForward(nn.Module):
         self.device_cached = device
         self.mode = mode
 
-        # PSF parameter (raw) - we'll normalise in get_psf()
+        # PSF parameter
         raw = torch.randn(1, 1, kernel_size, kernel_size) * 0.01
         self.raw_psf = nn.Parameter(raw)
         self._init_gaussian(init_sigma)
 
-        # Parametric lens parameters (we store raw params and expose positive versions)
+        # Parametric lens parameters 
         self.x0 = nn.Parameter(torch.tensor(0.0))
         self.y0 = nn.Parameter(torch.tensor(0.0))
-        self.raw_b = nn.Parameter(torch.tensor(0.08))   # raw -> positive via softplus
-        self.raw_rc = nn.Parameter(torch.tensor(0.01))  # raw -> positive
+        self.raw_b = nn.Parameter(torch.tensor(0.08))   
+        self.raw_rc = nn.Parameter(torch.tensor(0.01))  
 
-        # small learnable sub-pixel shift per image (raw), constrained via tanh
+        # small learnable sub-pixel shift per image 
         self.raw_subpix = nn.Parameter(torch.zeros(2))  # dx, dy in normalized coords (raw)
-
-        # Learnable log-sigma for gaussian noise (stabilises training)
         self.log_sigma = nn.Parameter(torch.tensor(-3.0))
 
     @property
@@ -106,7 +87,7 @@ class PhysicalForward(nn.Module):
         xs = torch.linspace(-1, 1, W, device=device)
         ys = torch.linspace(-1, 1, H, device=device)
         yv, xv = torch.meshgrid(ys, xs, indexing='xy')
-        grid = torch.stack((xv, yv), dim=-1)  # (H,W,2)
+        grid = torch.stack((xv, yv), dim=-1) 
         grid = grid.unsqueeze(0).repeat(B, 1, 1, 1)
         return grid
 
@@ -246,9 +227,6 @@ class RIMImproved(nn.Module):
         x = x + self.refine(h)
         return x
 
-# ----------------------------
-# Utilities: FITS I/O, normalization, saving
-# ----------------------------
 def read_fits_pair(fn):
     hdul = fits.open(fn, memmap=False)
     gt = None
@@ -312,7 +290,7 @@ def save_preview_png(png_path, lensed, recon, gt=None, vmin=None, vmax=None):
     if not np.isfinite(vmax):
         vmax = 1.0
 
-    # if vmin > vmax, swap; if equal, expand a tiny bit so Normalize is happy
+    # if vmin > vmax, swap, if equal, expand a tiny bit so Normalize is happy :)
     if vmin > vmax:
         vmin, vmax = vmax, vmin
     if vmin == vmax:
@@ -336,9 +314,6 @@ def save_preview_png(png_path, lensed, recon, gt=None, vmin=None, vmax=None):
     finally:
         plt.close(fig)
 
-# ----------------------------
-# Inference for one file
-# ----------------------------
 def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_png=True):
     lensed, gt, hdrs = read_fits_pair(fn)
     eps = 1e-8
@@ -351,7 +326,7 @@ def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_
     model.eval()
     forward_operator.eval()
     with torch.no_grad():
-        # make sure RIM uses the requested iteration count for inference
+        # make sure RIM uses the requested iteration count 
         if hasattr(model, 'n_iter') and model.n_iter != N_ITER:
             model.n_iter = N_ITER
         recon_t = model(obs_t, forward_operator)
@@ -385,7 +360,7 @@ def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_
     if save_png:
         png_path = os.path.join(out_dir, f"{base}_recon_preview.png")
 
-        # compute robust vmin/vmax and pass to the saver
+        # compute vmin/vmax and pass to the saver
         try:
             vmin = float(np.nanpercentile(recon_out, 1.0)) if recon_out.size else 0.0
             vmax = float(np.nanpercentile(recon_out, 99.0)) if recon_out.size else 1.0
@@ -397,7 +372,7 @@ def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_
             except Exception:
                 vmin, vmax = 0.0, 1.0
 
-        # defensively fix invalid cases
+        # fix invalid cases TODO
         if not np.isfinite(vmin):
             vmin = 0.0
         if not np.isfinite(vmax):
@@ -407,7 +382,7 @@ def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_
         if vmin == vmax:
             vmax = vmin + 1e-6
 
-        # finally save the preview
+        # save the preview
         try:
             save_preview_png(png_path, lensed_out, recon_out, gt_out, vmin=vmin, vmax=vmax)
         except Exception as e:
@@ -427,26 +402,20 @@ def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_
 
     return out_fits, metrics
 
-# ----------------------------
-# Helpers: robust checkpoint loading & kernel-size inference
-# ----------------------------
 def extract_forward_state(path):
     """Load forward operator checkpoint (cpu) and return the state_dict and detected kernel size."""
     state = torch.load(path, map_location='cpu')
-    # Common possibilities: plain state_dict, or checkpoint containing 'forward_state'
-    if isinstance(state, dict) and ('forward_state' in state or 'forward_operator' in state):
-        # Accept either key name
+    if isinstance(state, dict) and ('forward_state' in state or 'forward_operator' in state):    
         if 'forward_state' in state:
             fd = state['forward_state']
         else:
             fd = state['forward_operator']
     elif isinstance(state, dict) and ('raw_psf' in state or 'raw_kernel' in state or 'raw_psf.data' in state):
         fd = state
-    else:
-        # Could be a plain state_dict (mapping names to tensors)
+    else:        
         fd = state
 
-    # detect kernel size from keys raw_psf or raw_kernel if present
+    # detect kernel size from keys raw_psf 
     kernel_size = None
     if isinstance(fd, dict):
         if 'raw_psf' in fd and hasattr(fd['raw_psf'], 'shape'):
@@ -454,38 +423,27 @@ def extract_forward_state(path):
         elif 'raw_kernel' in fd and hasattr(fd['raw_kernel'], 'shape'):
             kernel_size = int(fd['raw_kernel'].shape[-1])
         else:
-            # fallback: try to inspect any parameter with 4 dimensions and small spatial dims
+            # fallback
             for k, v in fd.items():
                 if hasattr(v, 'ndim') and v.ndim == 4:
-                    if v.shape[-1] <= 101:  # assume PSF < 101
+                    if v.shape[-1] <= 101:  
                         kernel_size = int(v.shape[-1])
                         break
     return fd, kernel_size
 
 def extract_model_state(path):
     state = torch.load(path, map_location='cpu')
-    # accept checkpoint dict with 'model_state' or plain state dict
     if isinstance(state, dict) and 'model_state' in state:
         return state['model_state']
     elif isinstance(state, dict) and any(k.startswith('cell') or k.startswith('delta_head') or k.startswith('conv') for k in state.keys()):
-        # looks like a state dict for the model itself
         return state
     else:
-        # fallback: maybe it's a checkpoint with top-level keys
         return state
 
 def robust_load_state_dict(module, state_dict):
-    """
-    Load a state_dict into module robustly:
-     - strip common 'module.' prefix
-     - filter to keys that actually exist in module.state_dict()
-     - call load_state_dict(..., strict=False) so missing/unexpected are ignored
-    Prints summary of loaded / ignored keys.
-    """
     if not isinstance(state_dict, dict):
         raise RuntimeError("Provided state_dict is not a mapping/dict")
 
-    # strip 'module.' prefix if present in keys
     stripped = {}
     for k, v in state_dict.items():
         new_k = k
@@ -497,8 +455,6 @@ def robust_load_state_dict(module, state_dict):
     matched = {k: v for k, v in stripped.items() if k in model_keys}
 
     if len(matched) == 0:
-        # no direct matches; attempt a looser heuristic:
-        # sometimes people save parameters under slightly different names (rare) -> fall back to strict=False attempted directly
         try:
             module.load_state_dict(state_dict, strict=False)
             print("Warning: loaded state_dict with strict=False (no matched keys found in pre-filtering).")
@@ -506,7 +462,6 @@ def robust_load_state_dict(module, state_dict):
         except Exception as e:
             raise RuntimeError("No matching parameter names found when trying to load checkpoint for module.") from e
 
-    # load the filtered state dict
     load_info = module.load_state_dict(matched, strict=False)
     missing = load_info.missing_keys if hasattr(load_info, 'missing_keys') else []
     unexpected = load_info.unexpected_keys if hasattr(load_info, 'unexpected_keys') else []
@@ -517,11 +472,8 @@ def robust_load_state_dict(module, state_dict):
     if len(unexpected) > 0:
         print(f"  unexpected keys ignored ({len(unexpected)}): {unexpected[:10]}{'...' if len(unexpected)>10 else ''}")
 
-# ----------------------------
-# Main routine
-# ----------------------------
+
 def main():
-    # device
     if DEVICE:
         device = torch.device(DEVICE)
     else:
@@ -530,7 +482,6 @@ def main():
 
     os.makedirs(OUT_DIR, exist_ok=True)
 
-    # prepare file list
     if INPUT_FILE:
         files = [INPUT_FILE]
     else:
@@ -539,18 +490,17 @@ def main():
         print("No files found. Check INPUT_FILE/INPUT_DIR in the USER CONFIG block.")
         return
 
-    # infer H,W from first file
     sample_lensed, sample_gt, _ = read_fits_pair(files[0])
     H = int(sample_lensed.shape[0])
     W = int(sample_lensed.shape[1])
     print(f"Inferred image size HxW = {H} x {W} from {files[0]}")
 
-    # load forward operator checkpoint to detect kernel size if possible
+    # load forward operator checkpoint to detect kernel size 
     if not os.path.isfile(FORWARD_PATH):
         raise FileNotFoundError(f"Forward operator file not found: {FORWARD_PATH}")
     forward_state_raw, detected_kernel = extract_forward_state(FORWARD_PATH)
     if detected_kernel is None:
-        # default to 21 if we cannot detect
+        # default to 21 if cannot detect
         detected_kernel = 21
         print("Warning: could not detect kernel size from checkpoint; defaulting kernel_size=21")
     else:
@@ -560,15 +510,14 @@ def main():
     forward_operator = PhysicalForward(kernel_size=detected_kernel, device=str(device), enforce_nonneg=True).to(device)
     model = RIMImproved(n_iter=N_ITER).to(device)
 
-    # load forward operator weights robustly
+    # load forward operator weights
     try:
         fd = forward_state_raw
         if isinstance(fd, dict):
             robust_load_state_dict(forward_operator, fd)
         else:
-            # fallback: try loading checkpoint directly and let robust loader handle nested structures
+            # fallback
             ck = torch.load(FORWARD_PATH, map_location='cpu')
-            # prefer 'forward_state' nested key if present
             if isinstance(ck, dict) and 'forward_state' in ck:
                 robust_load_state_dict(forward_operator, ck['forward_state'])
             elif isinstance(ck, dict) and 'state_dict' in ck:
@@ -577,7 +526,6 @@ def main():
                 robust_load_state_dict(forward_operator, ck)
         print(f"Loaded forward operator weights from {FORWARD_PATH} (robust mode)")
     except Exception as e:
-        # last-ditch attempt: call load_state_dict with strict=False and surface the error
         try:
             ck = torch.load(FORWARD_PATH, map_location='cpu')
             if isinstance(ck, dict) and 'forward_state' in ck:
@@ -594,7 +542,6 @@ def main():
         raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
     try:
         mstate = torch.load(MODEL_PATH, map_location='cpu')
-        # extract likely model state dict
         if isinstance(mstate, dict) and 'model_state' in mstate:
             ms = mstate['model_state']
         elif isinstance(mstate, dict) and 'model' in mstate and isinstance(mstate['model'], dict):
@@ -602,7 +549,7 @@ def main():
         elif isinstance(mstate, dict) and any(k.startswith('cell') or k.startswith('delta_head') or k.startswith('conv') for k in mstate.keys()):
             ms = mstate
         else:
-            # fallback to raw object
+            # fallback
             ms = mstate
 
         if isinstance(ms, dict):
@@ -610,11 +557,9 @@ def main():
                 robust_load_state_dict(model, ms)
                 print(f"Loaded RIM model weights from {MODEL_PATH} (robust mode)")
             except Exception:
-                # try strict=False as a fallback
                 model.load_state_dict(ms, strict=False)
                 print(f"Loaded RIM model (fallback strict=False) from {MODEL_PATH}")
         else:
-            # if ms is not a dict, attempt to load directly
             model.load_state_dict(ms)
             print(f"Loaded RIM model weights from {MODEL_PATH}")
     except Exception as e:
@@ -660,4 +605,5 @@ def main():
         pass
 
 if __name__ == '__main__':
+
     main()
