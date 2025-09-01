@@ -1,22 +1,4 @@
 
-"""
-RIM-friendly strong-lensing simulator (TWO-HDU FITS)
----------------------------------------------------
-Creates FITS files with exactly two HDUs:
-  - GT     : background sources ONLY (no lens mass, no lens-light),
-             unlensed, detector-sampled (not PSF-convolved), in ADU.
-  - LENSED : what a telescope would see: lensed background + lens galaxy light
-             convolved with a PSF and with **mild** noise, in ADU.
-
-Goals:
-  - Make lensing features (arcs/multiple images) clearly visible.
-  - Keep noise moderate so structure is recognizable.
-  - Keep arrays fixed-size and metadata rich for ML pipelines.
-
-Dependencies: numpy, scipy, astropy, lenstronomy, pillow (optional for cutouts)
-
-Adjust the USER KNOBS section as desired.
-"""
 
 import os
 import random
@@ -31,44 +13,44 @@ from PIL import Image
 from lenstronomy.LensModel.lens_model import LensModel
 from lenstronomy.LightModel.light_model import LightModel
 
-# ============================== USER KNOBS ==================================
+
 OUTPUT_DIR = r"C:\Users\mythi\.astropy\Code\Fits_work\Varied_dataset_100k"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-IMAGE_SIZE = 96          # detector pixels (final)
-OVERSAMPLE = 4           # super-grid factor
-PIXEL_SCALE = 0.04       # arcsec / detector pixel
-DEFAULT_ZP = 25.94       # AB zeropoint (ADU/s) — set to your instrument
+IMAGE_SIZE = 96          
+OVERSAMPLE = 4           
+PIXEL_SCALE = 0.04      
+DEFAULT_ZP = 25.94       
 
 NUM_REALIZATIONS = 25000
-SEED = None              # set an int for reproducibility
+SEED = None             
 
 # Lens visibility controls
-FORCE_STRONG_LENSING = True   # place the main source near caustic so arcs are obvious
-THETA_E_RANGE = (0.9, 1.5)    # Einstein radius (arcsec) to favor visible arcs
-ELLIPTICITY_RANGE = (0.15, 0.45)  # SIE ellipticity for interesting morphologies
+FORCE_STRONG_LENSING = True   
+THETA_E_RANGE = (0.9, 1.5)   
+ELLIPTICITY_RANGE = (0.15, 0.45)  
 SHEAR_MAX = 0.08
 
 # Photometry & noise (mild)
-EXPTIME_RANGE = (800.0, 1600.0)     # seconds
-READ_NOISE_RANGE = (0.8, 1.8)       # e- RMS (mild)
-GAIN = 1.5                          # e-/ADU
-SKY_ADU_RANGE = (0.06, 0.25)        # flat sky level per pixel in ADU (mild)
+EXPTIME_RANGE = (800.0, 1600.0)    
+READ_NOISE_RANGE = (0.8, 1.8)      
+GAIN = 1.5                          
+SKY_ADU_RANGE = (0.06, 0.25)      
 
-# Source/lens brightness — tuned so arcs are not swamped by lens light
-SRC_MAG_RANGE = (21.0, 23.2)        # brighter -> lower mag number
-LENS_MAG_DELTA_RANGE = (-0.3, +1.2) # lens_mag = src_mag + delta
+
+SRC_MAG_RANGE = (21.0, 23.2)       
+LENS_MAG_DELTA_RANGE = (-0.3, +1.2) 
 
 # PSF
-PSF_TYPE = 'GAUSSIAN'               # 'GAUSSIAN' or 'MOFFAT'
-PSF_FWHM_ARCSEC = (0.06, 0.10)      # space-like, keeps arcs sharp
+PSF_TYPE = 'GAUSSIAN'               
+PSF_FWHM_ARCSEC = (0.06, 0.10)      
 
 # Extra source complexity
-N_EXTRA_SOURCES_RANGE = (0, 2)      # additional faint sources beyond the main one
-USE_CUTOUTS = False                 # if True, set CUTOUT_DIR to a folder of image cutouts
+N_EXTRA_SOURCES_RANGE = (0, 2)      
+USE_CUTOUTS = False                 
 CUTOUT_DIR = None
 
-# ============================================================================
+
 SUPER_SIZE = IMAGE_SIZE * OVERSAMPLE
 SUP_PIXEL_SCALE = PIXEL_SCALE / OVERSAMPLE
 
@@ -246,18 +228,13 @@ def generate_one(i, outdir=OUTPUT_DIR):
     read_noise = float(np.random.uniform(*READ_NOISE_RANGE))
     sky_adu = float(np.random.uniform(*SKY_ADU_RANGE))
 
-    # Choose magnitudes; lens vs source contrast
     src_mag = float(np.random.uniform(*SRC_MAG_RANGE))
     lens_mag = src_mag + float(np.random.uniform(*LENS_MAG_DELTA_RANGE))
 
-    # Scale intrinsic source to counts (ADU) on super-grid
     src_counts_sup, src_total = normalize_to_counts(src_sup, src_mag, zp, exptime)
-
-    # === GT (background only, unlensed, detector-sampled, not PSF-convolved) ===
     GT = downsample(src_counts_sup, OVERSAMPLE).astype(np.float32)
 
-    # === LENSED (lensed + lens-light + PSF + mild noise) ===
-    # Ray-shooting to source plane then interpolate counts
+
     x_flat, y_flat = x_sup.ravel(), y_sup.ravel()
     xs, ys = lens.ray_shooting(x_flat, y_flat, kwargs_lens)
     xs = xs.reshape(SUPER_SIZE, SUPER_SIZE)
@@ -277,7 +254,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
 
     lens_counts_sup, lens_total = normalize_to_counts(lens_light_sup, lens_mag, zp, exptime)
 
-    # Convolve (lensed sources + lens light) with PSF at super-res then downsample
+    # Convolve (lensed sources + lens light) with PSF then downsample
     image_sup = lensed_src_counts_sup + lens_counts_sup
     image_conv_sup = convolve_fft(image_sup, psf_sup, normalize_kernel=True, allow_huge=True)
     LENSED_counts = downsample(image_conv_sup, OVERSAMPLE).astype(np.float32)
@@ -290,7 +267,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
     adjust_tries = 0
     while ratio < target_ratio and adjust_tries < 3:
         # dim lens slightly and/or brighten source
-        LENSED_counts *= 0  # we'll rebuild below to keep Poisson stats consistent
+        LENSED_counts *= 0  
         lens_counts_sup *= 0.8
         src_counts_sup *= 1.25
         # recompute lensed/source conv quickly
@@ -311,15 +288,15 @@ def generate_one(i, outdir=OUTPUT_DIR):
     noisy_e += np.random.normal(0.0, read_noise, noisy_e.shape).astype(np.float32)
     LENSED = (noisy_e / GAIN).astype(np.float32)
 
-    # ---- Save exactly TWO HDUs ----
+
     filename = os.path.join(outdir, f"rim_sim_{i:05d}.fits")
     hdu_primary = fits.PrimaryHDU()
     
-    # Create image HDUs with proper headers
+
     hdu_gt = fits.ImageHDU(data=GT.astype(np.float32), name='GT')
     hdu_lensed = fits.ImageHDU(data=LENSED.astype(np.float32), name='LENSED')
     
-    # Add essential keywords to image headers
+
     for hdu in [hdu_gt, hdu_lensed]:
         hdu.header['PIXSCALE'] = (PIXEL_SCALE, 'arcsec/pixel')
         hdu.header['BUNIT'] = ('ADU', 'Brightness unit')
@@ -357,4 +334,5 @@ def main():
 
 
 if __name__ == '__main__':
+
     main()
