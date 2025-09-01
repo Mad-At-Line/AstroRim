@@ -99,13 +99,13 @@ def finetune_rim():
 
     # Finetuning configuration
     batch_size = 16
-    num_epochs = 75  # Reduced for finetuning
-    learning_rate = 2e-4  # Reduced learning rate for finetuning
+    num_epochs = 75  
+    learning_rate = 2e-4  
     patience = 20
-    pretrained_model_path = r"C:\Users\mythi\.astropy\Code\lv5_rim\rim_lv5.pt"  # Path to the pretrained model
-    finetuned_model_path = "rim_finetuned_dreams5-4.5.pt"  # Path to save the finetuned model
+    pretrained_model_path = r"C:\Users\mythi\.astropy\Code\lv5_rim\rim_lv5.pt"  
+    finetuned_model_path = "rim_finetuned_dreams5-4.5.pt"  
     
-    # Finetuning dataset - change this to your new dataset path
+    
     dataset_dir = r"C:\Users\mythi\.astropy\Code\comb_4.5_5"
     all_files = sorted(glob.glob(os.path.join(dataset_dir, "*.npz")))
     train_files, val_files = train_test_split(all_files, test_size=0.2, random_state=42)
@@ -122,7 +122,7 @@ def finetune_rim():
     forward_operator = DifferentiableLensing().to(device)
     model = RIM(n_iter=10, hidden_dim=96).to(device)
     
-    # Load pretrained weights
+    # Load weights
     if os.path.exists(pretrained_model_path):
         print(f"Loading pretrained model from {pretrained_model_path}")
         model.load_state_dict(torch.load(pretrained_model_path, map_location=device))
@@ -130,7 +130,6 @@ def finetune_rim():
         print(f"Warning: Pretrained model not found at {pretrained_model_path}. Starting from scratch.")
     
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    # Optional: use a learning rate scheduler for finetuning
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=5, verbose=True
     )
@@ -199,7 +198,7 @@ def finetune_rim():
                 print("Early stopping triggered after no improvement for", patience, "epochs.")
                 break
 
-        if (epoch + 1) % 5 == 0:  # Increased frequency of visualizations during finetuning
+        if (epoch + 1) % 5 == 0:  
             model.eval()
             plt.figure(figsize=(15, 12))
             for i in range(4):
@@ -294,4 +293,5 @@ if __name__ == '__main__':
     finetune_rim()
     end = time.time()
     elapsed_hours = (end - start) / 3600
+
     print(f"Finetuning complete in {elapsed_hours:.2f} hours")
