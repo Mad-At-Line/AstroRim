@@ -16,8 +16,6 @@ from skimage.metrics import structural_similarity as ssim
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-
-# ----------------------- Dataset (robust to PrimaryHDU GT + ImageHDU LENSED) -----------------------
 class LensingFitsDataset(Dataset):
     def __init__(self, files, augment=False):
         self.files = sorted(files)
@@ -586,3 +584,4 @@ if __name__ == '__main__':
     end = time.time()
     elapsed = (end - start) / 3600.0
     print(f"Training finished in {elapsed:.2f} hours")
+
