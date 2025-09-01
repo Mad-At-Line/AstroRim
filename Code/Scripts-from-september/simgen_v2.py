@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Physical gravitational-lens simulator (single-file).
-Saves PrimaryHDU + GT (unlensed detector-sampled, NOT PSF-convolved) + LENSED (final image).
-"""
 
 import os
 import random
@@ -16,21 +11,20 @@ from scipy.interpolate import RegularGridInterpolator
 from lenstronomy.LensModel.lens_model import LensModel
 from lenstronomy.LightModel.light_model import LightModel
 
-# ============================== USER KNOBS ==================================
 OUTPUT_DIR = r"C:\Users\mythi\.astropy\Code\Fits_work\Varied_dataset_100k"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-IMAGE_SIZE = 96          # final detector pixels (unchanged)
-OVERSAMPLE = 4           # super-grid factor (unchanged)
-PIXEL_SCALE = 0.04       # arcsec / detector pixel (final)
-DEFAULT_ZP = 25.94       # AB zeropoint (ADU/s)
+IMAGE_SIZE = 96          
+OVERSAMPLE = 4          
+PIXEL_SCALE = 0.04       
+DEFAULT_ZP = 25.94      
 
 NUM_REALIZATIONS = 35000
-SEED = None              # set an int for reproducibility
+SEED = None            
 
 # Lens & physical ranges
-THETA_E_VIS_RANGE = (0.9, 1.5)    # visibility check (soft)
-SIGMA_KMS_RANGE = (160.0, 320.0)  # velocity dispersion (km/s)
+THETA_E_VIS_RANGE = (0.9, 1.5)   
+SIGMA_KMS_RANGE = (160.0, 320.0)  #
 ELLIPTICITY_RANGE = (0.05, 0.45)
 SHEAR_MAX = 0.08
 
@@ -45,20 +39,20 @@ SRC_MAG_RANGE = (21.0, 23.2)
 LENS_MAG_DELTA_RANGE = (-0.3, +1.2)
 
 # PSF
-PSF_TYPE = 'GAUSSIAN'               # 'GAUSSIAN' or 'MOFFAT'
+PSF_TYPE = 'GAUSSIAN'              
 PSF_FWHM_ARCSEC = (0.06, 0.10)
 PSF_ELLIP_MAX = 0.08
 
 # Extra source complexity
 N_EXTRA_SOURCES_RANGE = (0, 2)
-USE_CUTOUTS = False                 # not used by default
+USE_CUTOUTS = False                
 CUTOUT_DIR = None
 
 # Detector artifacts (small)
-PRNU_RMS = 0.01        # 1% PRNU
-SKY_GRADIENT_MAX = 0.02  # fraction of sky across image
+PRNU_RMS = 0.01      
+SKY_GRADIENT_MAX = 0.02 
 COSMIC_RAY_PROB = 0.02
-COSMIC_RAY_INTENSITY = (50.0, 300.0)  # ADU
+COSMIC_RAY_INTENSITY = (50.0, 300.0) 
 
 # Lens model options
 ADD_GROUP_HALO_PROB = 0.18
@@ -66,10 +60,10 @@ ADD_SUBHALOS_PROB = 0.7
 
 # Derived
 SUPER_SIZE = IMAGE_SIZE * OVERSAMPLE
-SUP_PIXEL_SCALE = PIXEL_SCALE / OVERSAMPLE  # arcsec / super-pixel
+SUP_PIXEL_SCALE = PIXEL_SCALE / OVERSAMPLE  
 SUPER_PIX_AREA = SUP_PIXEL_SCALE ** 2
 
-# ------------------------------ utilities ----------------------------------
+
 def set_seed(seed=None):
     if seed is None:
         seed = np.random.SeedSequence().entropy
@@ -115,7 +109,7 @@ def rg_interpolator(x_sup, y_sup, im_sup, method='linear'):
     return RegularGridInterpolator((y_sup[:, 0], x_sup[0, :]), im_sup,
                                    method=method, bounds_error=False, fill_value=0.0)
 
-# surface brightness normalization -> returns counts / arcsec^2 on super-grid
+
 def normalize_to_sb_per_arcsec2(img, total_mag, zp, exptime, pixel_scale_arcsec):
     img = np.clip(img, 0.0, None).astype(np.float64)
     s = img.sum()
@@ -128,7 +122,7 @@ def normalize_to_sb_per_arcsec2(img, total_mag, zp, exptime, pixel_scale_arcsec)
     sb_counts_per_arcsec2 = counts_per_superpix / pix_area
     return sb_counts_per_arcsec2.astype(np.float32), float(total_counts)
 
-# --------------------------- sources ---------------------------------------
+
 def add_clumps(base, n=3, max_rel=0.8, sig_pix=(1.0, 5.0)):
     sup = base.copy()
     S = sup.shape[0]
@@ -194,7 +188,6 @@ def build_sources(x_sup, y_sup, theta_E):
 
     return np.clip(main, 0.0, None).astype(np.float32)
 
-# ------------------------ realization generator -----------------------------
 def generate_one(i, outdir=OUTPUT_DIR):
     # redshifts
     z_l = float(np.random.uniform(0.25, 0.7))
@@ -233,7 +226,6 @@ def generate_one(i, outdir=OUTPUT_DIR):
     # optionally add NFW group halo
     if np.random.rand() < ADD_GROUP_HALO_PROB:
         lens_model_list.append('NFW')
-        # lenstronomy NFW kwargs vary; choose modest values (these are placeholders — tune as needed)
         kwargs_lens.append({
             'alpha_Rs': 0.5,
             'Rs': np.random.uniform(5.0, 25.0),
@@ -258,8 +250,6 @@ def generate_one(i, outdir=OUTPUT_DIR):
     grid_lin_sup = np.linspace(-0.5 * IMAGE_SIZE * PIXEL_SCALE,
                                0.5 * IMAGE_SIZE * PIXEL_SCALE, SUPER_SIZE)
     x_sup, y_sup = np.meshgrid(grid_lin_sup, grid_lin_sup)
-
-    # build source surface-brightness pattern (arbitrary units)
     src_pattern = build_sources(x_sup, y_sup, theta_E)
 
     # photometry & PSF & noise parameters
@@ -282,16 +272,13 @@ def generate_one(i, outdir=OUTPUT_DIR):
     # counts per super-pixel:
     src_counts_sup = (sb_src_sup * SUPER_PIX_AREA).astype(np.float32)
 
-    # GT (unlensed, detector-sampled, NOT PSF-convolved) - matches original semantics
     GT = downsample(src_counts_sup, OVERSAMPLE).astype(np.float32)
 
-    # ray-shoot source: positions (x_sup,y_sup) -> source plane coords xs, ys
     x_flat, y_flat = x_sup.ravel(), y_sup.ravel()
     xs, ys = lens.ray_shooting(x_flat, y_flat, kwargs_lens)
     xs = xs.reshape(SUPER_SIZE, SUPER_SIZE)
     ys = ys.reshape(SUPER_SIZE, SUPER_SIZE)
 
-    # interpolate source SURFACE BRIGHTNESS at mapped coords, then convert to counts per super-pixel
     interp_sb = rg_interpolator(x_sup, y_sup, sb_src_sup, method='linear')
     pts = np.vstack([ys.ravel(), xs.ravel()]).T
     sb_mapped = interp_sb(pts).reshape(SUPER_SIZE, SUPER_SIZE)
@@ -310,18 +297,13 @@ def generate_one(i, outdir=OUTPUT_DIR):
 
     sb_lens_sup, lens_total_counts = normalize_to_sb_per_arcsec2(lens_light_sup_pattern, lens_mag, zp, exptime, SUP_PIXEL_SCALE)
     lens_counts_sup = (sb_lens_sup * SUPER_PIX_AREA).astype(np.float32)
-
-    # combine and convolve on super-grid
     image_sup = lensed_src_counts_sup + lens_counts_sup
 
-    # Convolve with PSF on super-grid (use convolve_fft)
+
     image_conv_sup = convolve_fft(image_sup, psf_sup, normalize_kernel=True, allow_huge=True)
 
     # Downsample to detector sampling
     LENSED_counts = downsample(image_conv_sup, OVERSAMPLE).astype(np.float32)
-
-    # Quick check: ensure arcs not completely swamped. If they are, adjust mags (by changing src_mag/lens_mag)
-    # We recompute minimal times (max 2 tries) using magnitude adjustments — avoids array scaling
     def peak99(arr):
         return float(np.percentile(arr, 99))
 
@@ -351,8 +333,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
         ratio = (peak_src + 1e-9) / (peak_lens + 1e-9)
         tries += 1
 
-    # Add mild sky background but include small sky gradient across image
-    # generate linear gradient across x axis
+
     xg = np.linspace(-0.5, 0.5, IMAGE_SIZE)
     sky_gradient = (1.0 + SKY_GRADIENT_MAX * (xg - xg.mean()) / (xg.max() - xg.min()))
     sky_map = sky_adu * sky_gradient[np.newaxis, :]
@@ -363,7 +344,6 @@ def generate_one(i, outdir=OUTPUT_DIR):
     prnu_map = 1.0 + np.random.normal(0.0, PRNU_RMS, size=(IMAGE_SIZE, IMAGE_SIZE)).astype(np.float32)
     LENSED_counts_prnu = LENSED_counts * prnu_map
 
-    # convert ADU -> electrons, Poisson noise, add read noise (electrons)
     e_image = np.clip(LENSED_counts_prnu * GAIN, 0.0, None)
     noisy_e = np.random.poisson(e_image).astype(np.float32)
     noisy_e += np.random.normal(0.0, read_noise, noisy_e.shape).astype(np.float32)
@@ -379,12 +359,8 @@ def generate_one(i, outdir=OUTPUT_DIR):
     # final LENSED image back to ADU
     LENSED = (noisy_e / GAIN).astype(np.float32)
 
-    # Build GT similarly but keep it unlensed and not PSF convolved (already computed above)
-    # GT was computed earlier from src_counts_sup
-    # Ensure GT includes same sky baseline? In original GT had no sky. Keep matching original: no sky added to GT
     GT_out = GT.astype(np.float32)
 
-    # Save to FITS: PrimaryHDU + GT + LENSED (match original two image HDUs naming)
     filename = os.path.join(outdir, f"rim_sim2_{i:05d}.fits")
     hdu_primary = fits.PrimaryHDU()
     hdu_gt = fits.ImageHDU(data=GT_out, name='GT')
@@ -429,3 +405,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
