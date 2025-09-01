@@ -1,20 +1,4 @@
-#!/usr/bin/env python3
-"""
-rim_infer_compatible.py
 
-Inference script compatible with the training script that creates:
-- PhysicalForward (parametric forward operator)
-- RIMImproved (the improved RIM)
-
-Features:
-- Loads forward and model checkpoints saved as either a raw state_dict or a checkpoint dict
-  containing 'model_state' and 'forward_state'.
-- Supports resizing inputs to the training spatial size.
-- Produces two-HDU FITS outputs (LENSED + RECON) and optional PNG previews.
-- Writes a small CSV summary for processed files.
-
-Author: ChatGPT (adapted to your training code)
-"""
 import os
 import glob
 import argparse
@@ -519,3 +503,4 @@ def main(argv=None):
 
 if __name__ == '__main__':
     main()
+
