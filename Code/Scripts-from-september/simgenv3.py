@@ -1,14 +1,4 @@
-#!/usr/bin/env python3
-"""
-Highly realistic two-HDU strong-lensing simulator
- - Saves PrimaryHDU (GT: unlensed, detector-sampled, NOT PSF-convolved)
-   and one ImageHDU (LENSED: lensed + lens light + PSF + noise + artifacts)
- - Image size: 96 x 96 pixels (detector)
- - Oversampled internally for accurate PSF & subpixel effects
- - Uses lenstronomy LensModel & LightModel for physical-looking lenses/sources
- - Adds instrument regimes (space-like, ground-like), PSF mismatch, correlated noise,
-   PRNU, sky-gradient, cosmic rays, group halo, subhalos, subpixel shifts, and more.
-"""
+
 
 import os
 import random
@@ -24,20 +14,19 @@ from scipy.signal import fftconvolve
 from lenstronomy.LensModel.lens_model import LensModel
 from lenstronomy.LightModel.light_model import LightModel
 
-# ============================== USER KNOBS ==================================
-OUTPUT_DIR = r"C:\Users\mythi\.astropy\Code\Fits_work\Varied_dataset_100k"   # change to your path
+
+OUTPUT_DIR = r"C:\Users\mythi\.astropy\Code\Fits_work\Varied_dataset_100k"  
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-IMAGE_SIZE = 96        # detector pixels (final) - EXACT requirement
-OVERSAMPLE = 4         # super-grid factor
-PIXEL_SCALE = 0.04     # nominal arcsec / detector pixel (final)
-DEFAULT_ZP = 25.94     # AB zeropoint (ADU/s)
+IMAGE_SIZE = 96        
+OVERSAMPLE = 4         
+PIXEL_SCALE = 0.04     
+DEFAULT_ZP = 25.94     
 
-NUM_REALIZATIONS = 45000   # set to 40000+ if you want larger
-SEED = None                # set int for reproducibility (e.g., 42)
+NUM_REALIZATIONS = 45000   
+SEED = None                
 
-# Instrument regimes (probabilities should sum to 1)
-# tuple: (prob, psf_fwhm_range_arcsec, sky_adu_range, read_noise_range, pixel_scale)
+
 INSTRUMENTS = [
     (0.45, (0.06, 0.12), (0.03, 0.20), (0.8, 1.8), 0.04),  # space-like
     (0.45, (0.5, 1.2), (0.2, 3.0), (3.0, 8.0), 0.20),     # ground-like (worse seeing, larger pixel)
@@ -45,13 +34,13 @@ INSTRUMENTS = [
 ]
 
 # Lens physics ranges
-SIGMA_KMS_RANGE = (100.0, 330.0)   # velocity dispersion range -> theta_E range built from this
+SIGMA_KMS_RANGE = (100.0, 330.0)  
 ELLIPTICITY_RANGE = (0.0, 0.5)
 SHEAR_MAX = 0.12
 
 # Source/lens brightness & contrast
 SRC_MAG_RANGE = (20.0, 25.5)
-LENS_MAG_DELTA_RANGE = (-2.0, +3.0)  # lens_mag = src_mag + delta (allow bright/faint lenses)
+LENS_MAG_DELTA_RANGE = (-2.0, +3.0) 
 
 # PSF parameters
 PSF_TYPES = ['GAUSSIAN', 'MOFFAT']
@@ -62,8 +51,8 @@ PSF_ELLIP_MAX = 0.35
 GAIN = 1.0
 READ_NOISE_RANGE = (0.8, 8.0)
 SKY_ADU_RANGE = (0.02, 3.0)
-PRNU_RMS = 0.01                # multiplicative pixel-response non-uniformity (1%)
-SKY_GRADIENT_MAX = 0.03       # fraction across image
+PRNU_RMS = 0.01               
+SKY_GRADIENT_MAX = 0.03       
 COSMIC_RAY_PROB = 0.03
 COSMIC_RAY_INTENSITY = (30.0, 400.0)  # ADU
 
@@ -73,7 +62,7 @@ ADD_SUBHALOS_PROB = 0.7
 
 # Realism toggles
 ADD_CORRELATED_NOISE_PROB = 0.6
-CORRELATED_NOISE_SIGMA_RANGE = (0.8, 4.0)  # pixels (on detector grid)
+CORRELATED_NOISE_SIGMA_RANGE = (0.8, 4.0)  
 ADD_SKY_SUBTRACTION_RESIDUALS_PROB = 0.6
 ADD_SUBPIXEL_SHIFT_PROB = 0.85
 ADD_PSF_MISMATCH_PROB = 0.6
@@ -86,7 +75,7 @@ SUPER_SIZE = IMAGE_SIZE * OVERSAMPLE
 SUP_PIXEL_SCALE = PIXEL_SCALE / OVERSAMPLE
 SUPER_PIX_AREA = SUP_PIXEL_SCALE ** 2
 
-# =============================================================================
+
 
 def set_seed(seed=None):
     if seed is None:
@@ -152,7 +141,6 @@ def normalize_to_sb_per_arcsec2(img, total_mag, zp, exptime, pixel_scale_arcsec)
     sb_counts_per_arcsec2 = counts_per_superpix / pix_area
     return sb_counts_per_arcsec2.astype(np.float32), float(total_counts)
 
-# --------------------------- source construction ----------------------------
 def add_clumps(base, n=3, max_rel=0.6, sig_pix=(1.0, 5.0)):
     sup = base.copy()
     S = sup.shape[0]
@@ -201,7 +189,7 @@ def build_sources(x_sup, y_sup, theta_E):
     disk  = lm.surface_brightness(x_sup, y_sup, [kwargs_d]).astype(np.float32)
     main = frac_bulge * bulge + (1 - frac_bulge) * disk
 
-    # extras (small satellites / star-forming clumps)
+    # extras (small satellites / star forming clumps)
     n_extra = np.random.randint(N_EXTRA_SOURCES_RANGE[0], N_EXTRA_SOURCES_RANGE[1] + 1)
     for _ in range(n_extra):
         cx2 = np.random.uniform(-0.9 * theta_E, 0.9 * theta_E)
@@ -228,7 +216,7 @@ def build_sources(x_sup, y_sup, theta_E):
 
     return np.clip(main, 0.0, None).astype(np.float32)
 
-# ------------------------ realization generator -----------------------------
+
 def generate_one(i, outdir=OUTPUT_DIR):
     # choose instrument regime probabilistically
     r = np.random.rand()
@@ -241,7 +229,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
             inst_read_noise_range = prn
             inst_pixel_scale = pscale
             break
-    # effective pixel scale for this realization (affects super-pixel scale)
+
     PIXEL_SCALE_THIS = inst_pixel_scale
     SUP_PIXEL_SCALE = PIXEL_SCALE_THIS / OVERSAMPLE
     SUPER_PIX_AREA = SUP_PIXEL_SCALE ** 2
@@ -322,11 +310,11 @@ def generate_one(i, outdir=OUTPUT_DIR):
     src_mag = float(np.random.uniform(*SRC_MAG_RANGE))
     lens_mag = src_mag + float(np.random.uniform(*LENS_MAG_DELTA_RANGE))
 
-    # convert intrinsic source pattern -> SB (counts per arcsec^2) on super-grid
+
     sb_src_sup, src_total_counts = normalize_to_sb_per_arcsec2(src_pattern, src_mag, zp, exptime, SUP_PIXEL_SCALE)
     src_counts_sup = (sb_src_sup * SUPER_PIX_AREA).astype(np.float32)
 
-    # GT (unlensed, detector-sampled, not PSF-convolved)
+
     GT = downsample(src_counts_sup, OVERSAMPLE).astype(np.float32)
 
     # Ray-shooting mapping for lensed source
@@ -335,7 +323,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
     xs = xs.reshape(SUPER_SIZE, SUPER_SIZE)
     ys = ys.reshape(SUPER_SIZE, SUPER_SIZE)
 
-    # interpolate source SB at mapped coords -> lensed SB per super-pixel
+
     interp_sb = rg_interpolator(x_sup, y_sup, sb_src_sup, method='linear')
     pts = np.vstack([ys.ravel(), xs.ravel()]).T
     sb_mapped = interp_sb(pts).reshape(SUPER_SIZE, SUPER_SIZE)
@@ -414,7 +402,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
     prnu_map = 1.0 + np.random.normal(0.0, PRNU_RMS, size=(IMAGE_SIZE, IMAGE_SIZE)).astype(np.float32)
     LENSED_counts_prnu = LENSED_counts * prnu_map
 
-    # correlated noise (optional): convolve white noise with gaussian kernel on detector grid
+
     if np.random.rand() < ADD_CORRELATED_NOISE_PROB:
         sigma_corr = np.random.uniform(*CORRELATED_NOISE_SIGMA_RANGE)
         kern_size = int(max(5, np.ceil(6 * sigma_corr)))
@@ -453,8 +441,7 @@ def generate_one(i, outdir=OUTPUT_DIR):
 
     LENSED = (noisy_e / GAIN).astype(np.float32)
 
-    # Build headers and save exactly TWO HDUs:
-    # PrimaryHDU contains GT (unlensed). ImageHDU (LENSED) is second HDU.
+
     filename = os.path.join(outdir, f"realistic_rim1_{i:05d}.fits")
     hdu_primary = fits.PrimaryHDU(data=GT.astype(np.float32))
     hdu_lensed = fits.ImageHDU(data=LENSED.astype(np.float32), name='LENSED')
