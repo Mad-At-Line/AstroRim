@@ -16,9 +16,7 @@ from skimage.transform import resize as sk_resize
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 
-# ----------------------------
-# DEFAULT CONFIG (edit if desired)
-# ----------------------------
+
 DEFAULT_INPUT_FILE = r"C:\Users\mythi\.astropy\Code\Lensing_option\CFRS0310787.fits"
 DEFAULT_INPUT_DIR = None
 DEFAULT_OUT_DIR = r"C:\Users\mythi\.astropy\Code\Real_results_v5"
@@ -26,12 +24,8 @@ DEFAULT_MODEL = r"C:\Users\mythi\.astropy\Code\WORKING_WITH_SIM_MODELS\Finetunin
 DEFAULT_FORWARD = r"C:\Users\mythi\.astropy\Code\WORKING_WITH_SIM_MODELS\Finetuning_Round2_model\forward_finetune_best.pt"
 DEFAULT_KERNEL = 21
 DEFAULT_NITER = 8
-DEFAULT_RESIZE = None  # set to training spatial size for resizing e.g. 96
-# ----------------------------
+DEFAULT_RESIZE = None 
 
-# ----------------------------
-# Forward operator and model classes (copied/compatible with training script)
-# ----------------------------
 class PhysicalForward(nn.Module):
     def __init__(self, kernel_size=21, device='cpu', enforce_nonneg=True, init_sigma=3.0):
         super().__init__()
@@ -225,9 +219,7 @@ class RIMImproved(nn.Module):
         x = x + self.refine(h)
         return x
 
-# ----------------------------
-# FITS I/O and helpers
-# ----------------------------
+
 def read_fits_lensed(fn):
     hdul = fits.open(fn, memmap=False)
     gt = None
@@ -346,9 +338,7 @@ def infer_file(fn, model, forward_operator, device, out_dir, rescale=True, save_
 
     return out_fits, png_path, metrics
 
-# ----------------------------
-# Checkpoint loading helpers
-# ----------------------------
+
 def load_forward_weights(forward_operator, forward_path, device):
     if not os.path.isfile(forward_path):
         raise FileNotFoundError(f"Forward operator file not found: {forward_path}")
@@ -376,7 +366,6 @@ def load_forward_weights(forward_operator, forward_path, device):
                 if not found:
                     raise RuntimeError("Could not interpret forward operator checkpoint format.")
     else:
-        # unexpected type (e.g. list) - attempt direct load
         forward_operator.load_state_dict(state)
     return forward_operator
 
@@ -399,7 +388,6 @@ def load_model_weights(model, model_path, device):
                     found = True
                     break
             if not found:
-                # last resort: try to load entire dict
                 try:
                     model.load_state_dict(state)
                 except Exception as e:
@@ -408,9 +396,7 @@ def load_model_weights(model, model_path, device):
         model.load_state_dict(state)
     return model
 
-# ----------------------------
-# Main
-# ----------------------------
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="RIM inference compatible with your training script (PhysicalForward + RIMImproved).")
     parser.add_argument('--input-file', default=DEFAULT_INPUT_FILE, help='Single .fits file to process')
@@ -503,4 +489,5 @@ def main(argv=None):
 
 if __name__ == '__main__':
     main()
+
 
