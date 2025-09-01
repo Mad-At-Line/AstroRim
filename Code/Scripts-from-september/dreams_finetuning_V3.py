@@ -1,19 +1,3 @@
-#!/usr/bin/env python3
-"""
-finetune_rim_forward_fixed_for_varied_dataset.py
-
-Patched finetuning script that is robust to slightly different FITS layouts used in
-your varied dataset (PrimaryHDU contains GT, or EXTNAME present, etc.).
-
-Changes from original:
- - Replaced LensingFitsDataset._read_pair with heuristics that try EXTNAME, ImageHDU.name,
-   PrimaryHDU fallback, and header-key heuristics. Produces informative error message
-   listing detected HDUs when it still cannot find a pair.
- - Added a small helper to optionally log a couple of detected headers for quick debugging.
- - Kept all finetuning logic the same; only dataset-loading behavior changed.
-
-Usage: same CLI as your original `finetune_rim_forward.py` (defaults preserved).
-"""
 
 import os
 import glob
@@ -33,7 +17,6 @@ from skimage.metrics import structural_similarity as ssim
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-# ----------------------- Dataset (robust to PrimaryHDU GT + ImageHDU LENSED) -----------------------
 class LensingFitsDataset(Dataset):
     def __init__(self, files, augment=False, debug=False):
         self.files = sorted(files)
@@ -68,18 +51,18 @@ class LensingFitsDataset(Dataset):
             elif name == 'LENSED' or name == 'OBS' or name == 'OBSERVED':
                 lensed = d
 
-        # 2) Fallback: common pattern in your simulator -> PrimaryHDU contains GT, second HDU is LENSED
+        # 2) Fallback
         if gt is None:
             primary = hdul[0]
             if primary.data is not None:
-                # Heuristic: if PrimaryHDU has numeric 2D data, treat as GT
+                # Heuristic: if PrimaryHDU has numeric 2D data treat as GT
                 try:
                     gt = primary.data.astype(np.float32)
                 except Exception:
                     gt = None
 
         if lensed is None:
-            # If second extension exists and has data, assume it's LENSED
+            # If second extension exists and has data assume it's LENSED
             if len(hdul) > 1 and hdul[1].data is not None:
                 try:
                     lensed = hdul[1].data.astype(np.float32)
@@ -92,27 +75,25 @@ class LensingFitsDataset(Dataset):
                 hdr = h.header
                 if h.data is None:
                     continue
-                # simulator injects keys like 'SRCMAG', 'THETA_E', 'PSF_FWH_TRUE', etc.
+                # simulator injects keys
                 if ('SRCMAG' in hdr or 'THETA_E' in hdr or 'PSF_FWH_TRUE' in hdr) and gt is None:
                     try:
                         gt = h.data.astype(np.float32)
                     except Exception:
                         pass
-                # The LENSED HDU in simulator often has EXTNAME 'LENSED' but catch as fallback:
+                # fallback:
                 if ('PSF_FWH' in hdr or 'SKYADU' in hdr or 'LENSED' in hdr.values()) and lensed is None and h is not hdul[0]:
                     try:
                         lensed = h.data.astype(np.float32)
                     except Exception:
                         pass
 
-        # 4) Final check / raise informative error if pair still missing
-        if gt is None or lensed is None:
-            # Collect debug info for easier diagnosis
+        # 4) Final check
+        if gt is None or lensed is None: 
             info_lines = []
             for idx, h in enumerate(hdul):
                 name = getattr(h, 'name', '') or h.header.get('EXTNAME', '')
-                shape = None if h.data is None else getattr(h.data, 'shape', None)
-                # Show a small selection of header keys for diagnosis
+                shape = None if h.data is None else getattr(h.data, 'shape', None)             
                 keys = list(h.header.keys())[:12]
                 info_lines.append(f"ext#{idx}: name='{name}' shape={shape} keys={keys}")
             hdul.close()
@@ -147,7 +128,6 @@ class LensingFitsDataset(Dataset):
         gt_t = torch.from_numpy(gt.copy()).unsqueeze(0).float()
         return obs_t, gt_t
 
-# ----------------------- PhysicalForward (unchanged interface) -----------------------
 class PhysicalForward(nn.Module):
     def __init__(self, kernel_size=21, device='cpu', enforce_nonneg=True, init_sigma=3.0, mode='parametric'):
         super().__init__()
@@ -273,7 +253,7 @@ class PhysicalForward(nn.Module):
         src_grad = self.warp_adjoint(r_conv)
         return src_grad
 
-# ----------------------- RIM improved (unchanged) -----------------------
+
 class ConvGate(nn.Module):
     def __init__(self, in_ch, hidden):
         super().__init__()
@@ -339,7 +319,7 @@ class RIMImproved(nn.Module):
         x = x + self.refine(h)
         return x
 
-# ----------------------- Utility functions -----------------------
+
 def compute_grad_norm(parameters):
     total = 0.0
     for p in parameters:
@@ -404,7 +384,7 @@ def save_reconstructions(epoch, model, forward_operator, val_loader, device, num
     plt.close(fig)
     print(f"Saved reconstructions to {out_path}")
 
-# ----------------------- Finetune training loop -----------------------
+
 def finetune(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"[{datetime.now().isoformat()}] Using device: {device}")
@@ -430,14 +410,13 @@ def finetune(args):
     start_epoch = 0
     best_val_loss = float('inf')
 
-    # Load checkpoints if provided
+    # Load checkpoints
     if args.rim_checkpoint and os.path.exists(args.rim_checkpoint):
         print(f"Loading RIM weights from {args.rim_checkpoint}")
         sd = torch.load(args.rim_checkpoint, map_location='cpu')
         try:
             model.load_state_dict(sd)
         except Exception:
-            # try state dict key names possibly stored under 'model_state'
             if 'model_state' in sd:
                 model.load_state_dict(sd['model_state'], strict=False)
             else:
@@ -471,12 +450,12 @@ def finetune(args):
     else:
         print("Finetuning both RIM and forward operator.")
 
-    # Optional freeze of PSF only (useful if you want to only finetune lens params)
+    # Optional freeze of PSF only
     if args.freeze_psf:
         print("Freezing PSF kernel parameters in forward operator (raw_psf.requires_grad=False).")
         forward_operator.raw_psf.requires_grad = False
 
-    # Setup optimizer: separate param groups if desired
+    # Setup optimizer
     params = []
     if args.finetune_mode in ['both', 'rim']:
         params.append({"params": [p for p in model.parameters() if p.requires_grad], "lr": args.lr_rim})
@@ -495,7 +474,6 @@ def finetune(args):
     os.makedirs(args.recon_out_dir, exist_ok=True)
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Resume from an optimizer checkpoint if requested
     if args.resume_checkpoint and os.path.exists(args.resume_checkpoint):
         ck = torch.load(args.resume_checkpoint, map_location='cpu')
         start_epoch = ck.get('epoch', 0)
@@ -638,7 +616,7 @@ def finetune(args):
             except Exception as e:
                 print(f"Failed to save reconstructions at epoch {epoch_idx}: {e}")
 
-    # final loss curves (save to output_dir)
+    # final loss curves 
     mse_curve_path = os.path.join(args.output_dir, 'mse_curve_finetune.png')
     ssim_curve_path = os.path.join(args.output_dir, 'ssim_curve_finetune.png')
 
@@ -663,7 +641,6 @@ def finetune(args):
     plt.close()
     print(f"Saved SSIM curve -> {ssim_curve_path}")
 
-# ----------------------- CLI -----------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Finetune RIM + Physics Forward operator")
 
@@ -684,7 +661,7 @@ def parse_args():
                    help="Which modules to finetune (default both)")
     p.add_argument('--freeze-psf', action='store_true', help="Freeze PSF kernel parameters in forward operator")
 
-    # defaults set to your specific checkpoint paths
+    # defaults set to specific checkpoint paths
     p.add_argument('--rim-checkpoint', type=str, default=r"C:\Users\mythi\.astropy\Code\v3_unfinetuned\rim_best_model.pt")
     p.add_argument('--forward-checkpoint', type=str, default=r"C:\Users\mythi\.astropy\Code\v3_unfinetuned\forward_best_operator.pt")
     p.add_argument('--resume-checkpoint', type=str, default='', help="Optional full checkpoint to resume optimizer/epoch")
@@ -704,7 +681,7 @@ def parse_args():
     p.add_argument('--use-amp', action='store_true', help="Use mixed precision (FP16) when CUDA available")
 
     p.add_argument('--checkpoint-every', type=int, default=5)
-    # output dir defaults to your requested output path:
+    # output dir defaults to requested output path:
     p.add_argument('--output-dir', type=str, default=r"C:\Users\mythi\.astropy\Code\Fits_work\Rim_improved_models",
                    help="Base output directory for checkpoints, best models, reconstructions and curves")
     p.add_argument('--checkpoint-dir', type=str, default=r"C:\Users\mythi\.astropy\Code\Fits_work\Rim_improved_models")
@@ -724,3 +701,4 @@ if __name__ == '__main__':
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     os.makedirs(args.recon_out_dir, exist_ok=True)
     finetune(args)
+
