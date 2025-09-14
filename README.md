@@ -9,32 +9,38 @@ Greystones Community College
 
 ## Abstract
 
-Gravitational lensing can be viewed as a powerful natural telescope to observe distant galaxies, but inverting lensing distortions remains a complicated previously unsolved inverse problem. We present AstroRim, a Recurrent Inference Machine (RIM) jointly trained with a differentiable forward lensing operator, to reconstruct unlensed source plane images from simulated strong lens observations. Using a 120,000+ sample synthetic dataset with complex multi component lens models Single Isothermal Ellipsoid (SIE) + Navarro–Frenk–White (NFW) + Single Isothermal Sphere (SIS) + External Shear and extended Sersic sources at 96x96 resolution, AstroRim achieves a Structural Similarity Index (SSIM) of 0.95 ± 0.02 and Mean Squared Error (MSE) of 4.7×10⁻⁴ on unseen test data. We demonstrate stability improvements via mixed precision, gradient clipping, and Exponential Moving Average (EMA), and discuss pathways towards real data application on HST, JWST, and Euclid imagery. Our pipeline offers a scalable, physics informed approach to delensing.
+Gravitational lensing can be viewed as a powerful natural telescope to observe distant galaxies, but inverting lensing distortions outside parametric modeling remains a complicated previously unsolved inverse problem. We present AstroRim, a Recurrent Inference Machine (RIM) jointly trained with a physics informed differentiable forward lensing operator, to reconstruct unlensed source plane images from simulated strong lens observations. Using a 120,000+ sample synthetic dataset per model with complex multi component lens models such as: Single Isothermal Ellipsoid (SIE),  Navarro–Frenk–White (NFW),  Single Isothermal Sphere (SIS),  External Shear, and extended Sersic sources at 96×96 resolution, AstroRim achieves a Structural Similarity Index (SSIM) of 0.95 ± 0.02 and Mean Squared Error (MSE) of 4.4×10⁻⁴ on unseen test data. We demonstrate stability improvements via mixed precision, gradient clipping, and Exponential Moving Average (EMA), and discuss pathways towards real data application on HST, JWST, and Euclid imagery. Our pipeline offers a scalable, physics informed approach to delensing.
 
 ---
 
 ## 1. Introduction
 
-Gravitational lensing by massive foreground objects distorts and magnifies background sources, enabling high resolution studies of distant galaxies. However, inverting these distortions to recover source morphology is greatly challenging: multiple source configurations can produce identical lensed images. Traditional parametric inversion methods are computationally expensive and sensitive to model assumptions, as well as a severe lack of generalization.
-Recent advances in deep learning, particularly Recurrent Inference Machines (RIMs) and Physics Informed Neural Networks (PINNs), offer mass simulation based data driven inversion by iteratively refining source estimates through learned gradient steps. Yet, most prior work uses a fixed forward operator or pretrained physics models that are subject to overfitting and poorly adapted to data provided outside their simulation scripts. We propose AstroRim, which jointly trains the RIM and a differentiable CNN based lensing operator end to end, leveraging physical constraints while maintaining dataset flexibility To our knowledge, this is the first delensing pipeline to jointly train a RIM and learned Convolutional Neural Network (CNN) based lensing operator end-to-end.
+Gravitational lensing by massive foreground objects distorts and magnifies background sources, enabling high resolution studies of distant galaxies. However, inverting these distortions to recover source morphology is greatly challenging: multiple source configurations can produce identical lensed images. Traditional parametric inversion methods are computationally expensive and sensitive to model assumptions, as well as a severe lack of generalization, meaning each RIM or model developed must be finetuned on simulations with the same mass profiles as the lens, making inversions lengthy.
+Recent advances in deep learning, particularly Recurrent Inference Machines (RIMs) and Physics Informed Neural Networks (PINNs), offer mass simulation based data driven inversion by iteratively refining source estimates through learned gradient steps. Yet, most prior work uses a fixed forward operator or pretrained physics models that are subject to overfitting and poorly adapted to data provided outside their simulation scripts. We propose AstroRim, which jointly trains the RIM and a differentiable PINN based lensing operator end to end, leveraging physical constraints while maintaining dataset flexibility. To our knowledge, this is the first delensing pipeline to jointly train a RIM and learned Differentiable Physics Informed Neural Network (DPINN) based lensing operator end-to-end.
+
 
 ---
 
 ### 1.1 Contributions
 
-- **Joint RIM + Physics Operator**: End-to-end training of both modules for consistent gradient flow.
-- **Complex Simulations**: Multi-component lenses (SIE + NFW + SIS + Shear) with 1–3 Sérsic sources.
-- **Stability Enhancements**: Mixed precision, gradient clipping, EMA, and LR warmup.
-- **Quantitative Benchmarks**: High SSIM and low MSE on synthetic test data.
-- **Extended Loss Tracking**: SSIM and MSE monitored across training, with best/worst-case metrics.
+- Joint RIM + Physics Operator: End to end training of both modules for consistent gradient flow.
+
+- Complex Simulations: Varying datasets with dual mass (SIE+NFW+SIS+SHEAR) and 1–6 Sersic sources, enabling realistic multi component lens tests.
+
+- Stability Enhancements: Integration of mixed precision (AMP), gradient clipping, EMA, and learning rate warmup to mitigate training instabilities.
+
+- Quantitative Benchmarks: SSIM and MSE metrics demonstrating high fidelity reconstructions on synthetic test data. Reconstructions of validation data are also provided throughout the training process to check model adaptability.
+
+- Verification Via Real Data: Using databases such as the Harvard-NASA JWST and HUBBLE libraries combined with the CASTLES gravitational lens survey, each model of AstroRim produced is tested on real data to identify where our simulations and model architectures are lacking.
 
 ---
 
 ## 2. Related Work
 
-- **RIMs**: Applied in MRI and deconvolution; Morningstar et al. (2019) applied to lensing with fixed forward models.
-- **Physics-Informed ML**: Differentiable simulators (Caustics, Lenstronomy) used to embed physical laws.
-- **Alternative Approaches**: CNN regression (Hezaveh et al. 2017) and variational inference methods—fast but lower source detail recovery.
+- Recurrent Inference Machines (RIMs): Originally applied in MRI and deconvolution, RIMs learn iterative update rules for inverse problems. Morningstar et al. (2019) applied RIMs to lensing with fixed forward models.
+- Physics Informed ML: Differentiable simulators (e.g., Caustics, Lenstronomy) have been used to embed physical laws. Joint training remains underexplored in lens inversion.
+- Alternative Approaches: CNN based regression of lens parameters (Hezaveh et al. 2017) and variational inference techniques achieve fast inference but often lack source-plane detail recovery.
+
 
 ---
 
@@ -44,7 +50,7 @@ Recent advances in deep learning, particularly Recurrent Inference Machines (RIM
 - Lens models: SIE + NFW + SIS + Shear via Lenstronomy.
 - Sources: 1–3 Sérsic profiles with varied amplitude, size, ellipticity, and position.
 - Grid: 96x96 pixels, normalized coordinates [-1,1] (to 98%).
-- Dataset: 45k+ pairs (85% train, 15% val) 250-pair test set.
+- Dataset: 250k+ pairs (85% train, 15% val) 250-pair test set.
 
 ### 3.2 Model Architecture
 - Forward Operator: CNN (Conv 9×9 → ReLU → Conv 5×5 → ReLU → Conv 3×3).
@@ -54,7 +60,7 @@ Recent advances in deep learning, particularly Recurrent Inference Machines (RIM
 ### 3.3 Training Strategy
 - Optimizer: AdamW + LR warmup (10% epochs) + ReduceLROnPlateau.
 - Stabilization: AMP, gradient clipping (max_norm=5), EMA (0.999).
-- Hardware: 6GB GPU, 150 epochs, evaluation every 5 epochs.
+- Hardware: 6GB GPU + 2080ti GPU, 150 epochs, evaluation every 5 epochs.
 
 ---
 
