@@ -207,12 +207,14 @@ If HDU names are missing, some scripts fall back to common patterns (e.g., Prima
 If you use this code in academic work, please cite the accompanying AstroRIM paper/report.
 
 ```bibtex
-@misc{walsh_astrorim_2025,
-  title        = {AstroRIM: Physics-Informed Inversion for Strong Gravitational Lensing},
-  author       = {Walsh, Jack},
+@misc{walsh_astrorim_software_2025,
+  title        = {AstroRIM},
+  author       = {Walsh, Jack and Brennan, John and Regan, John and {O'Sullivan}, Creidhe},
   year         = {2025},
-  howpublished = {https://github.com/Mad-At-Line/AstroRim},
-  note         = {GitHub repository}
+  month        = dec,
+  howpublished = {GitHub repository},
+  url          = {https://github.com/Mad-At-Line/AstroRim/tree/af51ab4},
+  note         = {Version: main @ af51ab4; accessed 2025-12-31}
 }
 ```
 
