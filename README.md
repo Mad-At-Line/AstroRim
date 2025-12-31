@@ -1,127 +1,251 @@
 # AstroRIM
+**Physics-Informed Inversion for Strong Gravitational Lensing (RIM + differentiable forward operator)**
 
-**Physics Informed Inversion For Deep Space Imaging**  
-Jack Walsh  
-[20jwalsh@greystonescollege.ie](mailto:20jwalsh@greystonescollege.ie)  
-Greystones Community College
+AstroRIM is an end-to-end pipeline for **gravitational lens inversion**: recovering an **unlensed source-plane image** from a **lensed observation** using a **Recurrent Inference Machine (RIM)** jointly trained with a **learned, differentiable, physics-informed forward lensing operator**.
 
----
+This repository contains:
+- Simulation generators (Lenstronomy-based) for creating synthetic lens/source pairs.
+- Inference/evaluation tooling (SSIM/MSE, FITS I/O, batch evaluation, residuals).
+- Real-lens preprocessing utilities (normalization, centering, enhancement).
+- Diagnostic/analysis tooling for producing mass-profile plots and summary figures.
+- Example images and artifacts used in the accompanying paper/report.
 
-## Abstract
-
-Gravitational lensing can be viewed as a powerful natural telescope to observe distant galaxies, but inverting lensing distortions outside parametric modeling remains a complicated previously unsolved inverse problem. We present AstroRim, a Recurrent Inference Machine (RIM) jointly trained with a physics informed differentiable forward lensing operator, to reconstruct unlensed source plane images from simulated strong lens observations. Using a 120,000+ sample synthetic dataset per model with complex multi component lens models such as: Single Isothermal Ellipsoid (SIE),  Navarro–Frenk–White (NFW),  Single Isothermal Sphere (SIS),  External Shear, and extended Sersic sources at 96×96 resolution, AstroRim achieves a Structural Similarity Index (SSIM) of 0.95 ± 0.02 and Mean Squared Error (MSE) of 4.4×10⁻⁴ on unseen test data. We demonstrate stability improvements via mixed precision, gradient clipping, and Exponential Moving Average (EMA), and discuss pathways towards real data application on HST, JWST, and Euclid imagery. Our pipeline offers a scalable, physics informed approach to delensing.
-
----
-
-## 1. Introduction
-
-Gravitational lensing by massive foreground objects distorts and magnifies background sources, enabling high resolution studies of distant galaxies. However, inverting these distortions to recover source morphology is greatly challenging: multiple source configurations can produce identical lensed images. Traditional parametric inversion methods are computationally expensive and sensitive to model assumptions, as well as a severe lack of generalization, meaning each RIM or model developed must be finetuned on simulations with the same mass profiles as the lens, making inversions lengthy.
-Recent advances in deep learning, particularly Recurrent Inference Machines (RIMs) and Physics Informed Neural Networks (PINNs), offer mass simulation based data driven inversion by iteratively refining source estimates through learned gradient steps. Yet, most prior work uses a fixed forward operator or pretrained physics models that are subject to overfitting and poorly adapted to data provided outside their simulation scripts. We propose AstroRim, which jointly trains the RIM and a differentiable PINN based lensing operator end to end, leveraging physical constraints while maintaining dataset flexibility. To our knowledge, this is the first delensing pipeline to jointly train a RIM and learned Differentiable Physics Informed Neural Network (DPINN) based lensing operator end-to-end.
-
+> **Author:** Jack Walsh  
+> **Contact:** 20jwalsh@greystonescollege.ie  
+> **School:** Greystones Community College
 
 ---
 
-### 1.1 Contributions
+## Why AstroRIM?
+Traditional lens inversion (especially outside rigid parametric models) is a difficult inverse problem: many source configurations can match the same observation. AstroRIM addresses this by:
+- Learning iterative inference updates (RIM) *and*
+- Learning/optimizing the forward operator (a differentiable lensing operator) **jointly**, so gradient flow is consistent end-to-end.
 
-- Joint RIM + Physics Operator: End to end training of both modules for consistent gradient flow.
-
-- Complex Simulations: Varying datasets with dual mass (SIE+NFW+SIS+SHEAR) and 1–6 Sersic sources, enabling realistic multi component lens tests.
-
-- Stability Enhancements: Integration of mixed precision (AMP), gradient clipping, EMA, and learning rate warmup to mitigate training instabilities.
-
-- Quantitative Benchmarks: SSIM and MSE metrics demonstrating high fidelity reconstructions on synthetic test data. Reconstructions of validation data are also provided throughout the training process to check model adaptability.
-
-- Verification Via Real Data: Using databases such as the Harvard-NASA JWST and HUBBLE libraries combined with the CASTLES gravitational lens survey, each model of AstroRim produced is tested on real data to identify where our simulations and model architectures are lacking.
+From the current project summary, AstroRIM was trained on large synthetic datasets with composite lens models (SIE + NFW + SIS + external shear) and extended Sérsic sources at 96×96 resolution, achieving strong SSIM/MSE performance on held-out synthetic data. *(See paper/report for full details.)*
 
 ---
 
-## 2. Related Work
+## Repository layout
 
-- Recurrent Inference Machines (RIMs): Originally applied in MRI and deconvolution, RIMs learn iterative update rules for inverse problems. Morningstar et al. (2019) applied RIMs to lensing with fixed forward models.
-- Physics Informed ML: Differentiable simulators (e.g., Caustics, Lenstronomy) have been used to embed physical laws. Joint training remains underexplored in lens inversion.
-- Alternative Approaches: CNN based regression of lens parameters (Hezaveh et al. 2017) and variational inference techniques achieve fast inference but often lack source-plane detail recovery.
+AstroRim/
+├─ Code/ # scripts: simulation, evaluation, preprocessing, diagnostics/figures
+├─ Models/ # trained PyTorch checkpoints (.pt) and/or model artifacts
+├─ image_dump/ # sample figures/images used in the writeup
+├─ LICENSE
+└─ README.md
 
+yaml
+Copy code
 
----
-
-## 3. Methods
-
-### 3.1 Simulation Pipeline
-- Lens models: SIE + NFW + SIS + Shear via Lenstronomy.
-- Sources: 1–3 Sérsic profiles with varied amplitude, size, ellipticity, and position.
-- Grid: 96x96 pixels, normalized coordinates [-1,1] (to 98%).
-- Dataset: 250k+ pairs (85% train, 15% val) 250-pair test set.
-
-### 3.2 Model Architecture
-- Forward Operator: CNN (Conv 9×9 → ReLU → Conv 5×5 → ReLU → Conv 3×3).
-- RIM Core: Gated Conv RNN (hidden_dim=96), 15 inference iterations.
-- Loss: MSE primary, SSIM tracked; per-image metrics monitored.
-
-### 3.3 Training Strategy
-- Optimizer: AdamW + LR warmup (10% epochs) + ReduceLROnPlateau.
-- Stabilization: AMP, gradient clipping (max_norm=5), EMA (0.999).
-- Hardware: 6GB GPU + 2080ti GPU, 150 epochs, evaluation every 5 epochs.
+> **Note:** scripts are research-focused and evolve quickly. If you’ve renamed local scripts, just adjust the paths in the commands below.
 
 ---
 
-## 4. Results
+## Requirements
 
-**Metrics:** SSIM = 0.95 ± 0.02, MSE = 4.7×10⁻⁴ on test data.  
-**Visuals:** High-fidelity reconstructions matching ground truth across varied lenses and sources.
+### Core dependencies
+You’ll typically need:
+- Python 3.9+ (3.10+ recommended)
+- PyTorch (CUDA optional but recommended)
+- NumPy, SciPy, Matplotlib
+- Astropy (FITS + cosmology utilities)
+- scikit-image (metrics + preprocessing)
+- Lenstronomy (simulation / lens model building)
 
----
-
-## 5. Discussion
-
-### 5.1 Comparison to Morningstar et al. (2019)
-Morningstar et al. (2019) demonstrated the application of a RIM for gravitational lens inversion using a fixed, parametric forward model (ray tracing through an SIE lens) paired with a separate CNN for mass estimation (Morningstar et al., 2019). However, their approach does not cotrain the physics operator, limiting adaptability to modeling errors, and leading to inevitable failure in the context of real data. In contrast, AstroRim jointly optimizes a differentiable CNN based lensing operator and the RIM, enabling end to end correction of forward model mismatches and yielding higher fidelity reconstructions. Another angle is that of generalization. Morningstar et al. (2019) was able to produce high quality reconstructions, however these reconstructions were all using the same lens types and not accounting for variance in object location and size, as well as providing the model with data outside of the pure lensed information during evaluation.
-
-### 5.2 Stability vs. Capacity
-- 96-dim RIM = higher SSIM, near hardware limits.
-- 64-dim RIM = more stable training.
-- Joint training accelerates convergence but can oscillate—mitigated with AMP, EMA, gradient clipping.
-
-### 5.3 Limitations & Future Improvements
-- Synthetic-to-real gap remains.
-- Plans: add PSF/noise, scale to higher resolutions, real HST/JWST validation.
+### Optional (used by some analysis tooling)
+- tqdm (progress bars)
+- pandas (CSV export / tables)
+- h5py (HDF5 export)
+- pyyaml (YAML config support)
+- joblib (caching)
+- scikit-learn (some utilities)
 
 ---
 
-## 6. Future Work
-- Scale to 128×128 and multi-band images.
-- Validate on real HST/JWST datasets.
-- Add uncertainty estimation and RGB channels.
-- Expand RIM capacity with more resources.
+## Installation
 
----
+### Option A — pip + venv (simple)
+```bash
+python -m venv .venv
+# macOS/Linux:
+source .venv/bin/activate
+# Windows:
+# .venv\Scripts\activate
 
-## 7. Conclusion
-AstroRim shows that jointly training a RIM with a forward operator yields high-fidelity delensing. With real data validation, it could be a valuable astrophysical imaging tool.
+python -m pip install --upgrade pip
 
----
+# Install core packages
+pip install numpy scipy matplotlib astropy scikit-image lenstronomy
 
-## Acknowledgements
-Thanks to ML4Astro community, Lenstronomy, and SciPy developers.
+# Install PyTorch (choose the correct command for your OS/CUDA)
+# See: https://pytorch.org/get-started/locally/
 
----
+# Optional extras
+pip install tqdm pandas h5py pyyaml joblib scikit-learn
+Option B — conda (recommended if you hit binary issues)
+bash
+Copy code
+conda create -n astrorim python=3.10 -y
+conda activate astrorim
 
-## Appendix
-**Code:** [AstroRim GitHub](https://github.com/Mad-At-Line/AstroRim)
+conda install -c conda-forge numpy scipy matplotlib astropy scikit-image -y
+pip install lenstronomy
 
+# PyTorch via conda (pick CUDA build as appropriate)
+# https://pytorch.org/get-started/locally/
+Quickstart (typical workflow)
+1) Generate simulations (synthetic dataset)
+Simulation scripts live in Code/ and generally write FITS files containing:
 
+a ground truth source (GT)
 
-**Sample Images** Figure 1: Simulation example ![Figure 1](image_dump/Screenshot_2025-04-29_220437.png) Figure 2: Recontruction of a lensed image compared the ground truth ![Figure 2](image_dump/image_2025-08-13_151914547.png) Figure 3: Recontruction of a lensed image compared the ground truth ![Figure 3](image_dump/image_2025-08-13_152045645.png) Figure 4: Newer simulations for inital training of the S2R model ![Figure 4](image_dump/image_2025-08-18_180802856.png)
----
+a lensed/observed image (LENSED/OBS)
 
-## References
-1. Morningstar, W., et al. (2019). Deep recurrent inference for gravitational lensing. arXiv:1901.01359.
-2. Hezaveh, Y., et al. (2017). Fast parameter estimation in strong lensing using CNNs. ApJ.
-3. Shu, Y., & Bolton, A. (2020). Lenstronomy: Multi-plane lensing and ML-ready simulations. JOSS.
-4. Pinciroli Vago, N.O., Fraternali, P. (2023). DeepGraviLens: Neural Comput & Applic, 35, 19253–19277.
-5. Birrer, S., & Amara, A. (2018). lenstronomy: JOSS.
-6. Ruff, A. J., et al. (2011). Adaptive Optics Imaging of Galaxy-scale Gravitational Lenses. ApJ.
-7. Wagner-Carena, K., et al. (2021). Variational Inference for Gravitational Lens Mass Modeling. A&A.
-8. Li, Z., et al. (2022). GNN-Lens: ApJ.
-9. Nightingale, J. W., et al. (2019). Skylens: A&C.
-10. Serjeant, S., et al. (2019). Euclid Strong Lens Working Group Simulations. A&C.
-11. Zhang, T., et al. (2021). Uncertainty Quantification in RIM-based Inversions. NeurIPS AstroML Workshop.
+metadata in FITS headers (lens/source params, etc.)
+
+Most sim generators are configured near the top of the file (e.g., OUTPUT_DIR, number of realizations, PSF/noise settings). Example:
+
+bash
+Copy code
+python Code/simgen_v2.py
+If you have multiple sim generators (e.g., simgenv3.py, simgenv6.py), treat them as “profiles” for different regimes (strong/weak lensing, noise models, PSFs, etc.).
+
+2) Run inference + evaluation (SSIM/MSE, recon dumps)
+The evaluation script expects either a directory of FITS files or a single FITS file, plus your trained checkpoints.
+
+Example:
+
+bash
+Copy code
+python Code/Simulation_tests.py \
+  --input-dir /path/to/fits_dir \
+  --out-dir   /path/to/results \
+  --model-path   Models/cond_rim_finetune_best.pt \
+  --forward-path Models/cond_forward_finetune_best.pt \
+  --device cuda \
+  --n-iter 10 \
+  --kernel-size 21
+Helpful toggles:
+
+--no-png disables per-file PNG outputs
+
+--no-rescale disables output rescaling
+
+--use-subhalos / --n-subhalos if your forward operator was trained with substructure
+
+Outputs typically include:
+
+reconstructed sources
+
+metrics per file (SSIM/MSE)
+
+optional per-case diagnostic figures
+
+3) Lens/mass diagnostics + summary figures (optional)
+There is an analysis/figure script designed to:
+
+load reconstructions / convergence maps
+
+compute radial mass profiles (cosmology-aware)
+
+export figures, tables, and summary PDFs
+
+Example usage pattern:
+
+bash
+Copy code
+python Code/integrated_mastertest.py \
+  --forward-model Models/cond_forward_finetune_best.pt \
+  --input /path/to/recon_fits_dir \
+  --output-dir /path/to/analysis_out \
+  --z-lens 0.68 \
+  --z-source 1.73 \
+  --pixscale-method psf_fwhm \
+  --assumed-seeing 0.8 \
+  --summary-pdf
+If your FITS reconstructions include a source-plane HDU, the analyzer can look for extensions like RECON, SRC, SOURCE, SOURCE_PLANE.
+
+4) Preprocess real-lens FITS (normalization/centering/enhancement)
+For survey/cutout FITS, preprocessing can help reduce background clutter and standardize inputs.
+
+Example:
+
+bash
+Copy code
+python Code/mass_normalizer.py \
+  --input-dir /path/to/real_fits \
+  --output-dir /path/to/processed \
+  --target-size 96 \
+  --denoise combined \
+  --enhance adaptive_ring \
+  --centering brightness_weighted
+FITS format expectations (important)
+The evaluation tooling is designed to be tolerant of “simulator version drift”, but best results come from consistent conventions:
+
+Lensed/observed image stored in an HDU named: LENSED or OBS / OBSERVED
+
+Ground truth source stored in an HDU named: GT
+
+If names aren’t present, some scripts fall back to “Primary HDU is GT, next HDU is LENSED” patterns.
+
+If something loads incorrectly, enable any available “debug FITS structure” flags in the scripts to print HDU names/shapes.
+
+Reproducibility notes
+Fix random seeds in sim generation if you want deterministic datasets.
+
+Keep your simulation distribution consistent with training (lens types, PSF/noise, pixel scale), or you’ll amplify the synthetic-to-real gap.
+
+If you’re evaluating on real lenses, document:
+
+pixel scale assumptions
+
+PSF estimates (FWHM/beta if Moffat)
+
+any FITS conversion steps (PNG→FITS pipelines can introduce artifacts)
+
+Citing
+If you use this code in academic work, please cite the accompanying AstroRIM paper/report.
+
+BibTeX (template):
+
+bibtex
+Copy code
+@misc{walsh_astrorim_2025,
+  title        = {AstroRIM: Physics-Informed Inversion for Strong Gravitational Lensing},
+  author       = {Walsh, Jack},
+  year         = {2025},
+  howpublished = {\url{https://github.com/Mad-At-Line/AstroRim}},
+  note         = {GitHub repository}
+}
+License
+Apache-2.0 (see LICENSE).
+
+Contributing / Issues
+If you find a bug, reproducibility issue, or want to propose a feature:
+
+Open an Issue with:
+
+the command you ran
+
+your input data description (shapes, HDUs, pixel scale)
+
+error logs / screenshots
+
+PRs are welcome, especially for:
+
+pinned dependency versions
+
+small example datasets
+
+cleaner config-driven runs (instead of editing constants in scripts)
+
+Acknowledgements
+Built with major reliance on the open-source scientific Python ecosystem, especially:
+
+PyTorch
+
+Astropy
+
+Lenstronomy
+
+SciPy / NumPy / scikit-image
