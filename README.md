@@ -33,3 +33,43 @@ This repository contains:
 - [Acknowledgements](#acknowledgements)
 
 ---
+AstroRIM/
+├── Code/
+│   ├── EvaluationAndUsage/
+│   │   ├── Mass Analysis.py
+│   │   ├── Real Data Normalizer.py
+│   │   └── Reconstruction Generator.py
+│   ├── SimulationScripts/
+│   │   ├── simgenv1.py
+│   │   ├── simgenv2.py
+│   │   ├── simgenv3.py
+│   │   ├── simgenv4.py
+│   │   ├── simgenv5.py
+│   │   └── simgenv6.py
+│   └── Training/
+│       └── (training scripts / configs)
+├── Models/
+│   ├── cond_forward_finetune_best.pt
+│   └── cond_rim_finetune_best.pt
+├── image_dump/
+├── LICENSE
+└── README.md
+What lives where (practically)
+
+Code/EvaluationAndUsage/ — run inference on FITS and compute quality metrics + diagnostics/figures.
+
+The reconstruction + evaluation flow (SSIM/MSE, FITS I/O, batch runs, residuals, etc.) is implemented here.
+
+Real-lens preprocessing / normalization (denoise + enhancement + centering without cropping, resize/pad to 96×96) is handled here.
+
+Code/SimulationScripts/ — synthetic dataset generation (Lenstronomy-based) across multiple simgen versions, used to diversify realism and parameter coverage.
+
+Code/Training/ — training utilities / scripts (kept separate so inference + sims can be used without touching training code).
+
+Models/ — released weights for:
+
+cond_forward_finetune_best.pt (conditional forward operator)
+
+cond_rim_finetune_best.pt (conditional RIM)
+
+image_dump/ — example outputs and figures (useful for sanity checks and paper figures).
