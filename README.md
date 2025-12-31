@@ -1,4 +1,4 @@
-# AstroRim
+# AstroRIM
 
 **Physics Informed Inversion For Deep Space Imaging**  
 Jack Walsh  
