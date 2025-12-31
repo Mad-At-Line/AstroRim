@@ -204,7 +204,7 @@ If HDU names are missing, some scripts fall back to common patterns (e.g., Prima
 
 ## Citing
 
-If you use this code in academic work, please cite the accompanying AstroRIM paper/report.
+If you use this code in academic work, please cite the accompanying AstroRIM paper/report. However, until the Preprint has been finished, use this software citation.
 
 ```bibtex
 @misc{walsh_astrorim_software_2025,
