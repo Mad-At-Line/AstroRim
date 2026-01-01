@@ -20,7 +20,7 @@ This repository contains:
 
 ## Why AstroRIM?
 
-Traditional lens inversion (especially those who operate outside rigid parametric models) is a difficult inverse problem: many source configurations can match the same observation, and these models are often trained specific to one lens. AstroRIM addresses this by:
+Traditional lens inversion (especially those who operate outside rigid parametric models such as black-box CNNs) is a difficult inverse problem: many source configurations can match the same observation, and these models are often trained specific to one lens. AstroRIM addresses this by:
 
 * Learning iterative inference updates (RIM) *and*
 * Learning/optimizing the forward operator (a conditional and differentiable lensing operator) **jointly**, so gradient flow is consistent end-to-end.
