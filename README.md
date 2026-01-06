@@ -1,6 +1,6 @@
 # AstroRIM
 
-**Physics-Informed Inversion for Strong Gravitational Lensing (RIM + differentiable forward operator)**
+**Physics-Parameterized Inversion for Strong Gravitational Lensing (RIM + differentiable forward operator)**
 
 AstroRIM is an end-to-end pipeline for **gravitational lens inversion** and **gravitational lens mass profiling**: recovering an **unlensed source-plane image** from a **lensed observation** using a **Recurrent Inference Machine (RIM)** jointly trained with a **learned, conditional, and differentiable, physics-paraneterized forward lensing operator**.
 
@@ -14,7 +14,7 @@ This repository contains:
 
 > **Author:** Jack Walsh
 > **Contact:** [20jwalsh@greystonescollege.ie](mailto:20jwalsh@greystonescollege.ie)
-> **School:** Greystones Community College
+> **School:** Greystones Community College0
 
 ---
 
@@ -25,7 +25,7 @@ Traditional lens inversion (especially those who operate outside rigid parametri
 * Learning iterative inference updates (RIM) *and*
 * Learning/optimizing the forward operator (a conditional and differentiable lensing operator) **jointly**, so gradient flow is consistent end-to-end.
 
-AstroRIM was trained on large synthetic datasets with composite lens models (SIE + NFW + SIS + external shear) and extended Sérsic sources at 96×96 resolution, achieving strong SSIM/MSE performance on held-out synthetic data. *(See paper/report for full details.)*
+AstroRIM was trained on large synthetic datasets with composite lens models (SIE + NFW + SIS + external shear) and extended Sérsic sources at 96×96 resolution, achieving strong SSIM/MSE performance on held-out synthetic data. *(See paper/report for full details. For early paper access please email: 20jwalsh@greystonescollege.ie)*
 
 ---
 
