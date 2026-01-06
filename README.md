@@ -76,7 +76,6 @@ pip install numpy scipy matplotlib astropy scikit-image lenstronomy
 # Install PyTorch (choose the correct command for your OS/CUDA)
 # See: https://pytorch.org/get-started/locally/
 
-# Optional extras
 pip install tqdm pandas h5py pyyaml joblib scikit-learn
 ```
 
