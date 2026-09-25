@@ -13,8 +13,8 @@ This repository contains:
 * Example images and artifacts used in the accompanying paper/report.
 
 > **Author:** Jack Walsh
-> **Contact:** [20jwalsh@greystonescollege.ie](mailto:20jwalsh@greystonescollege.ie)
-> **School:** Greystones Community College0
+> **Contact:** [walshj70@tcd.ie](mailto:walshj70@tcd.ie)
+> **School:** Trinity College Dublin
 
 ---
 
