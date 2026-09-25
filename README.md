@@ -1,5 +1,11 @@
 # AstroRIM
 
+---
+
+> **Note:** This work is currently in progress, this repository holds code that may be out of date. I update this infrequently, with most of the work currently happening locally. If you would like to run AstroRIM please contact me directly so I can provide the most up to date instructions.
+
+---
+
 **Physics-Parameterized Inversion for Strong Gravitational Lensing (RIM + differentiable forward operator)**
 
 AstroRIM is an end-to-end pipeline for **gravitational lens inversion** and **gravitational lens mass profiling**: recovering an **unlensed source-plane image** from a **lensed observation** using a **Recurrent Inference Machine (RIM)** jointly trained with a **learned, conditional, and differentiable, physics-paraneterized forward lensing operator**.
