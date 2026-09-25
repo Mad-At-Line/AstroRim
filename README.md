@@ -2,7 +2,7 @@
 
 ---
 
-> **Note:** This work is currently in progress, this repository holds code that may be out of date. I update this infrequently, with most of the work currently happening locally. If you would like to run AstroRIM please contact me directly so I can provide the most up to date instructions.
+> **Note:** This work is currently in progress, this repository holds code that may be out of date. I update this infrequently, with most of the work is currently happening locally. If you would like to run AstroRIM please contact me directly so I can provide the most up to date instructions.
 
 ---
 
